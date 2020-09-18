@@ -7,16 +7,23 @@
 : ${FRAMEWORK_DIR:=`pwd`/framework}
 
 # build architectures
-# BUILD_ARCHS="i386 armv7s armv7 arm64"
-BUILD_ARCHS="armv7s armv7 arm64 i386 x86_64"
+if [ "$1" == "ios" ]; then
+    BUILD_ARCHS="armv7s armv7 arm64 i386 x86_64"
+else
+    if [ "$1" == "mac" ]; then
+        BUILD_ARCHS="i386 x86_64"
+    fi
+fi
 
 # XCode directories
 : ${XCODE_ROOT:=`xcode-select -print-path`}
 XCODE_SIMULATOR=$XCODE_ROOT/Platforms/iPhoneSimulator.platform/Developer
 XCODE_DEVICE=$XCODE_ROOT/Platforms/iPhoneOS.platform/Developer
+XCODE_MAC=$XCODE_ROOT/Platforms/MacOSX.platform/Developer
 
 XCODE_SIMULATOR_SDK=$XCODE_SIMULATOR/SDKs/iPhoneSimulator$IPHONE_SDKVERSION.sdk
 XCODE_DEVICE_SDK=$XCODE_DEVICE/SDKs/iPhoneOS$IPHONE_SDKVERSION.sdk
+XCODE_MAC_SDK=$XCODE_MAC/SDKs/MacOSX.sdk
 
 XCODE_TOOLCHAIN_USR_BIN=$XCODE_ROOT/Toolchains/XcodeDefault.xctoolchain/usr/bin/
 XCODE_USR_BIN=$XCODE_ROOT/usr/bin/
@@ -58,8 +65,10 @@ showConfig() {
   echo "XCode Directories..."
   echo "XCODE_SIMULATOR: $XCODE_SIMULATOR"
   echo "XCODE_DEVICE: $XCODE_DEVICE"
+  echo "XCODE_MAC: $XCODE_MAC"
   echo "XCODE_SIMULATOR_SDK: $XCODE_SIMULATOR_SDK"
   echo "XCODE_DEVICE_SDK: $XCODE_DEVICE_SDK"
+  echo "XCODE_MAC_SDK: $XCODE_MAC_SDK"
   echo "XCODE_TOOLCHAIN_USR_BIN: $XCODE_TOOLCHAIN_USR_BIN"
   echo "XCODE_USR_BIN: $XCODE_USR_BIN"
   echo
@@ -83,6 +92,12 @@ developerToolsPresent () {
     echo "ERROR: unable to find Xcode Device directory: $XCODE_DEVICE"
     ENV_ERROR=1
   fi
+  
+  # check for mac directory
+  if [ ! -d "$XCODE_MAC" ]; then
+    echo "ERROR: unable to find Xcode Mac directory: $XCODE_MAC"
+    ENV_ERROR=1
+  fi
 
   #check for SDKs
   if [ ! -d "$XCODE_SIMULATOR_SDK" ]; then
@@ -92,6 +107,11 @@ developerToolsPresent () {
 
   if [ ! -d "$XCODE_DEVICE_SDK" ]; then
     echo "ERROR: Device SDK not found"
+    ENV_ERROR=1
+  fi
+  
+  if [ ! -d "$XCODE_MAC_SDK" ]; then
+    echo "ERROR: MAC SDK not found"
     ENV_ERROR=1
   fi
 
@@ -110,7 +130,7 @@ developerToolsPresent () {
   for tool in $targetTools
   do
     if [ ! -e "$XCODE_TOOLCHAIN_USR_BIN/$tool" ] && [ ! -e "$XCODE_USR_BIN/$tool" ]; then
-      echo "ERROR: unable to find $tool at device or simulator IOS_TOOLCHAIN or XCODE_TOOLCHAIN"
+      echo "ERROR: unable to find $tool at device or simulator OS_TOOLCHAIN or XCODE_TOOLCHAIN"
       ENV_ERROR=1
     fi
   done

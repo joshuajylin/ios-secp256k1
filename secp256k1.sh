@@ -16,27 +16,43 @@
 # : ${IPHONE_SDKVERSION:=11.1}
 : ${IPHONE_SDKVERSION:=$(echo $(xcodebuild -showsdks) | grep -o  'iphonesimulator[0-9]\+.[0-9]\+' | grep -o  '[0-9]\+.[0-9]\+')}
 
-source shared.sh
+# macos SDK version
+: ${MAC_SDKVERSION:=$(echo $(xcodebuild -showsdks) | grep -o  'macos[0-9]\+.[0-9]\+' | grep -o  '[0-9]\+.[0-9]\+')}
+
+if [ "$1" != "ios" ] && [ "$1" != "mac" ]; then
+    echo "Usage: $0 <ios | mac>"
+    exit 1
+fi
+
+OS_PLATFORM=$1
+source shared.sh $OS_PLATFORM
 
 untarLzippedBundle() {
   echo "Untar bundle to $SRC_DIR..."
   tar -zxvf secp256k1-1.0.0.tar.gz -C $SRC_DIR
   doneSection
 }
-[[ $(xcodebuild -showsdks | grep iOS ) =~ iphonesimulator11.1 ]] && echo matched
 exportConfig() {
   echo "Export configuration..."
-  IOS_ARCH=$1
-  if [ "$IOS_ARCH" == "i386" ] || [ "$IOS_ARCH" == "x86_64" ]; then
-    IOS_SYSROOT=$XCODE_SIMULATOR_SDK
+  OS_ARCH=$1
+  if [ "$OS_ARCH" == "i386" ] || [ "$OS_ARCH" == "x86_64" ]; then
+    if [ "$OS_PLATFORM" == "ios" ]; then
+        OS_SYSROOT=$XCODE_SIMULATOR_SDK
+    else
+        if [ "$OS_PLATFORM" == "mac" ] ; then
+            OS_SYSROOT=$XCODE_MAC_SDK
+        fi
+    fi
   else
-    IOS_SYSROOT=$XCODE_DEVICE_SDK
+    OS_SYSROOT=$XCODE_DEVICE_SDK
   fi
-  CFLAGS="-arch $IOS_ARCH -fPIC -g -Os -pipe --sysroot=$IOS_SYSROOT"
-  if [ "$IOS_ARCH" == "armv7s" ] || [ "$IOS_ARCH" == "armv7" ]; then
-    CFLAGS="$CFLAGS -mios-version-min=6.0"
-  else
-    CFLAGS="$CFLAGS -fembed-bitcode -mios-version-min=7.0"
+  CFLAGS="-arch $OS_ARCH -fPIC -g -Os -pipe --sysroot=$OS_SYSROOT"
+  if [ "$OS_PLATFORM" == "ios" ]; then
+    if [ "$OS_ARCH" == "armv7s" ] || [ "$OS_ARCH" == "armv7" ]; then
+        CFLAGS="$CFLAGS -mios-version-min=6.0"
+    else
+        CFLAGS="$CFLAGS -fembed-bitcode -mios-version-min=7.0"
+    fi
   fi
   CXXFLAGS=$CFLAGS
   CPPFLAGS=$CFLAGS
@@ -45,17 +61,17 @@ exportConfig() {
   export CXX=clang++
   export CFLAGS
   export CXXFLAGS
-  export IOS_SYSROOT
+  export OS_SYSROOT
   export CC_FOR_BUILD
   export PATH="$XCODE_TOOLCHAIN_USR_BIN":"$XCODE_USR_BIN":"$ORIGINAL_PATH"
-  echo "IOS_ARC: $IOS_ARCH"
+  echo "OS_ARC: $OS_ARCH"
   echo "CC: $CC"
   echo "CXX: $CXX"
   echo "LDFLAGS: $LDFLAGS"
   echo "CC_FOR_BUILD: $CC_FOR_BUILD"
   echo "CFLAGS: $CFLAGS"
   echo "CXXFLAGS: $CXXFLAGS"
-  echo "IOS_SYSROOT: $IOS_SYSROOT"
+  echo "OS_SYSROOT: $OS_SYSROOT"
   echo "PATH: $PATH"
   doneSection
 }
